@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-secondary: #f1f5f9;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    
+    /* Operational Blue */
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-subtle: #eff6ff;
+    
+    /* Semantic Amber (Historical & Warning) */
+    --amber-bg: #fffbebf5;
+    --amber-border: #fde68a;
+    --amber-text: #b45309;
+    --amber-badge: #d97706;
+    
+    /* Semantic Green (High Confidence / Confirmed) */
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --green-text: #15803d;
+    
+    /* Semantic Red (P1 / Error) */
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --red-text: #b91c1c;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom Scrollbar for dense enterprise UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Pulse animation for running tool steps */
+@keyframes toolPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-tool-pulse {
+  animation: toolPulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

@@ -1,0 +1,40 @@
+# Environment variables
+.env
+.env*.local
+*.env
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Next.js build output
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python / Pytest
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# Databases & local storage caches if generated
+storage/*.db-journal
+storage/*.chroma/
+
+# Operating System & IDE files
+.DS_Store
+Thumbs.db
+~$*.xlsx
+.idea/
+.vscode/
+
+# Vercel
+.vercel

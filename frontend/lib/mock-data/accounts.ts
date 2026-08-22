@@ -1,0 +1,48 @@
+import type { Account } from '@/lib/types';
+
+export const ACCOUNTS: Account[] = [
+  {
+    id: 'ACCT-001',
+    name: 'Northstar Logistics',
+    plan: 'Enterprise',
+    status: 'active',
+    csm: 'Priya Mehta',
+    hasAgreement: true,
+    contractFile: 'Northstar_Logistics_Enterprise_Agreement.pdf',
+    premiumSupport: true,
+    notes: 'Key enterprise account. Signed agreement overrides default SLA targets and cancellation policy.',
+  },
+  {
+    id: 'ACCT-002',
+    name: 'LumenWorks',
+    plan: 'Growth',
+    status: 'active',
+    csm: 'Rahul Sharma',
+    hasAgreement: true,
+    contractFile: 'LumenWorks_Service_Agreement.pdf',
+    premiumSupport: false,
+    notes: 'Growth account. Agreement provides fixed ₹300 credit at >4hr pickup delay. No cancellation fee waiver.',
+  },
+  {
+    id: 'ACCT-003',
+    name: 'Beacon Retail',
+    plan: 'Standard',
+    status: 'active',
+    csm: 'Aisha Khan',
+    hasAgreement: false,
+    contractFile: null,
+    premiumSupport: false,
+    notes: 'Standard plan. Default policies apply. No custom agreement.',
+  },
+  {
+    id: 'ACCT-004',
+    name: 'Axis Labs',
+    plan: 'Enterprise',
+    status: 'at_risk',
+    csm: 'Vikram Singh',
+    hasAgreement: false,
+    contractFile: null,
+    premiumSupport: true,
+    notes: 'Enterprise plan, no custom agreement. Default Enterprise policy applies. Account flagged at-risk.',
+  },
+];
