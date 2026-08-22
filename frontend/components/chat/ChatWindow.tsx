@@ -59,6 +59,13 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
 
     abortControllerRef.current = new AbortController();
 
+    // Read persisted user context (set by RoleSwitcher + TopHeader account dropdown)
+    const userContext = {
+      role: (typeof window !== 'undefined' ? localStorage.getItem('pp_user_role') : null) ?? 'support_agent',
+      account_scope: (typeof window !== 'undefined' ? localStorage.getItem('pp_account_scope') : null) || null,
+      user_name: (typeof window !== 'undefined' ? localStorage.getItem('pp_user_name') : null) ?? 'support_user',
+    } as { role: 'support_agent' | 'senior_support' | 'operations_manager' | 'admin'; account_scope: string | null; user_name: string };
+
     try {
       await streamAssistantResponse(
         currentId,
@@ -128,7 +135,8 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
             return updated;
           });
         },
-        abortControllerRef.current.signal
+        abortControllerRef.current.signal,
+        userContext,
       );
     } catch {
       setMessages((prev) => {

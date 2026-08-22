@@ -30,6 +30,12 @@ export function RoleSwitcher({ currentUser = USERS[1], onUserChange }: RoleSwitc
     setSelectedUser(user);
     onUserChange?.(user);
     setIsOpen(false);
+    // Persist so ChatWindow can forward it to the backend
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pp_user_role', user.role);
+      localStorage.setItem('pp_user_name', user.name);
+      localStorage.setItem('pp_user_account', user.accountScope?.id ?? '');
+    }
   }
 
   const getRoleBadgeStyle = (role: UserContext['role']) => {

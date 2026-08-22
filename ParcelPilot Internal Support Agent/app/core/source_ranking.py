@@ -91,18 +91,17 @@ def resolve_tier(doc_type: str, status: str, account_scope: str | None) -> Sourc
 def rank_chunks(
     raw_chunks: list[dict],
     query_account_id: str | None = None,
+    query_text: str | None = None,
 ) -> list[RankedChunk]:
     """
     Take raw retrieval results (each a dict with text + metadata) and
     return them ranked by authority tier, with account-specific documents
     for the account in question boosted above general documents of the
     same nominal tier.
-
-    `query_account_id`: the account the current query concerns (if known),
-    used to prioritise that account's own agreement above agreements or
-    general docs unrelated to it.
     """
     ranked: list[RankedChunk] = []
+    q_lower = (query_text or "").lower()
+    asking_deprecated = any(w in q_lower for w in ["deprecated", "v2", "legacy", "2023"])
 
     for chunk in raw_chunks:
         doc_type = chunk.get("doc_type", "unknown")
@@ -110,16 +109,20 @@ def rank_chunks(
         account_scope = chunk.get("account_scope")
         tier = resolve_tier(doc_type, status, account_scope)
 
+        # If user explicitly asked for deprecated/v2 policy, do not demote it
+        if status == "deprecated" and asking_deprecated:
+            tier = SourceTier.CURRENT_POLICY_OR_SOP
+
         is_account_specific = bool(account_scope)
         # Demote an agreement chunk that belongs to a DIFFERENT account
         # than the one the query concerns -- it should not outrank the
         # general policy for someone else's question.
         if (
             tier == SourceTier.CUSTOMER_AGREEMENT
-            and query_account_id
+            and account_scope
             and account_scope != query_account_id
         ):
-            tier = SourceTier.CURRENT_PRODUCT_DOC  # demote, still visible, not authoritative here
+            tier = SourceTier.CURRENT_PRODUCT_DOC  # demote agreement when query is general or for another account
 
         note = ""
         if status == "deprecated":
@@ -198,16 +201,18 @@ def confidence_from_ranked_chunks(
     ranked: list[RankedChunk],
     conflict: ConflictReport,
     missing_required_fields: bool = False,
+    low_coverage: bool = False,
 ) -> tuple[str, bool]:
     """
     Derive a (confidence_level, is_historical) pair from concrete signals:
       - top source tier
       - presence of an unresolved conflict
       - whether required calculation inputs were missing
+      - whether top retrieved source fell below relevance coverage threshold
 
     Returns confidence in {"high", "moderate", "low"}.
     """
-    if not ranked:
+    if not ranked or low_coverage:
         return "low", False
 
     top = ranked[0]

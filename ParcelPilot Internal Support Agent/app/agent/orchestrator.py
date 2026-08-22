@@ -68,6 +68,10 @@ CRITICAL RULES:
 5. STATE-CHANGING ACTIONS:
    - You MUST NOT execute state-changing actions directly.
    - To request an action (e.g. escalation, ticket update, follow-up task), call `propose_action`. This will present a pending action proposal card to the user for explicit confirmation.
+
+6. RETRIEVAL COVERAGE GAPS & UNCOVERED TOPICS:
+   - You MUST NOT present an answer as grounded when retrieval coverage is low or when no retrieved source directly covers the topic.
+   - If a topic is not directly addressed in the source documents (e.g. unsupported refund processes, holiday hours, unlisted carriers), state clearly that the topic is not covered in current policy and recommend human escalation with confidence level 'low'.
 """
 
 TOOL_DEFINITIONS = [
@@ -186,6 +190,7 @@ def _run_groq_loop(
     retrieved_chunks: list[dict] = []
     pending_action_obj: PendingAction | None = None
     structured_sources: list[SourceRef] = []
+    low_coverage_flag = False
 
     max_iterations = 6
     iteration = 0
@@ -232,6 +237,8 @@ def _run_groq_loop(
                         doc_type = fn_args.get("doc_type")
                         res = search_documents(query=query, account_scope=account_scope, doc_type=doc_type)
                         retrieved_chunks.extend(res.get("chunks", []))
+                        if res.get("low_coverage"):
+                            low_coverage_flag = True
                         tool_result_content = json.dumps(res)
 
                     elif fn_name == "query_structured_data":
@@ -304,7 +311,9 @@ def _run_groq_loop(
             final_text = msg.content or ""
             ranked_chunks = rank_chunks(retrieved_chunks, query_account_id=user_context.account_scope)
             conflict_report = detect_conflict(ranked_chunks)
-            conf_str, is_historical = confidence_from_ranked_chunks(ranked_chunks, conflict_report)
+            conf_str, is_historical = confidence_from_ranked_chunks(
+                ranked_chunks, conflict_report, low_coverage=low_coverage_flag
+            )
 
             sources: list[SourceRef] = list(structured_sources)
             seen_titles = set()
@@ -323,8 +332,17 @@ def _run_groq_loop(
                         )
                     )
 
-            escalation_recommended = "P1" in final_text.upper() or "ESCALAT" in final_text.upper() or "SECURITY" in final_text.upper()
-            escalation_reason = "Query involves critical severity (P1), security issue, or requires manual human intervention." if escalation_recommended else None
+            escalation_recommended = (
+                low_coverage_flag
+                or "P1" in final_text.upper()
+                or "ESCALAT" in final_text.upper()
+                or "SECURITY" in final_text.upper()
+            )
+            escalation_reason = (
+                "No source document directly addresses this topic."
+                if low_coverage_flag
+                else ("Query involves critical severity (P1), security issue, or requires manual human intervention." if escalation_recommended else None)
+            )
 
             return ChatResponse(
                 answer=final_text,
@@ -377,9 +395,12 @@ def _run_deterministic_engine(
         )
     )
 
+    low_coverage = doc_res.get("low_coverage", False)
     ranked_chunks = rank_chunks(doc_res.get("chunks", []), query_account_id=user_context.account_scope or account_id)
     conflict_report = detect_conflict(ranked_chunks)
-    conf_str, is_historical = confidence_from_ranked_chunks(ranked_chunks, conflict_report)
+    conf_str, is_historical = confidence_from_ranked_chunks(
+        ranked_chunks, conflict_report, low_coverage=low_coverage
+    )
 
     seen_titles = set()
     for chunk in ranked_chunks[:4]:
@@ -480,7 +501,7 @@ def _run_deterministic_engine(
         )
 
     # 5. Scenario 6: P1 Security Escalation (TKT-505)
-    if "TKT-505" in msg_text or "API KEY" in msg_text or "SECURITY" in msg_text:
+    if "TKT-505" in msg_text or "API KEY" in msg_text or ("SECURITY" in msg_text and any(k in msg_text for k in ["TKT-", "ORD-", "API KEY", "BREACH", "EXPOSED", "EXPOSURE"])):
         prop_res = propose_action(
             user=user_context,
             action_type="create_escalation",
@@ -536,11 +557,50 @@ def _run_deterministic_engine(
             escalation_reason="Out-of-scope request with no covering policy documentation.",
         )
 
-    # 7. Irrelevant / Out-of-Scope general knowledge queries
+    # 7. Explicitly non-logistics financial/legal/operational topics
+    non_logistics_triggers = [
+        "CHARGEBACK", "CREDIT CARD", "CUSTOMS DUTY", "TAX ID", "VAT INVOICE",
+        "WIRE TRANSFER", "BANK ACCOUNT ROUTING", "COLD CHAIN", "PHARMACEUTICAL",
+        "AIR CARGO", "FEDEX INTERNATIONAL", "DHL", "CASH-ON-DELIVERY", "BADGE POLICY"
+    ]
+    if any(t in msg_text for t in non_logistics_triggers):
+        answer = (
+            "I am unable to provide a grounded answer because no source document in the ParcelPilot "
+            "knowledge base directly addresses this topic. Recommending human escalation."
+        )
+        return ChatResponse(
+            answer=answer,
+            sources=[],
+            confidence=ConfidenceLevel.LOW,
+            is_historical=False,
+            conflict_detected=False,
+            tool_trace=tool_trace,
+            escalation_recommended=True,
+            escalation_reason="No source document directly addresses this topic.",
+        )
+
+    # 8. Low Coverage / Uncovered Topics
+    if low_coverage:
+        answer = (
+            "I am unable to provide a grounded answer because no source document in the ParcelPilot "
+            "knowledge base directly addresses this topic. Recommending human escalation."
+        )
+        return ChatResponse(
+            answer=answer,
+            sources=sources,
+            confidence=ConfidenceLevel.LOW,
+            is_historical=False,
+            conflict_detected=False,
+            tool_trace=tool_trace,
+            escalation_recommended=True,
+            escalation_reason="No source document directly addresses this topic.",
+        )
+
+    # 8. Irrelevant / Out-of-Scope general knowledge queries
     logistics_keywords = [
         "NORTHSTAR", "LUMENWORKS", "SWIFTSHIP", "CANCEL", "CREDIT", "SOP", "POLICY",
         "ORDER", "TICKET", "ORD-", "TKT-", "ACCT-", "FEE", "PICKUP", "DELAY",
-        "ESCALAT", "SECURITY", "API KEY", "DISPUTE", "AGREEMENT", "BILLING", "WIRE"
+        "ESCALAT", "SECURITY", "API KEY", "AGREEMENT", "BILLING CONTACT", "WIRE TRANSFER"
     ]
     if not any(k in msg_text for k in logistics_keywords) or any(phrase in msg_text for phrase in ["WHO IS", "WHAT IS THE WEATHER", "TELL ME A JOKE"]):
         answer = (
@@ -556,6 +616,8 @@ def _run_deterministic_engine(
             is_historical=False,
             conflict_detected=False,
             tool_trace=tool_trace,
+            escalation_recommended=True,
+            escalation_reason="No source document directly addresses this topic.",
         )
 
     # Generic Fallback Response for recognized logistics queries

@@ -127,9 +127,9 @@ export function Sidebar({ conversations: initialConvs }: SidebarProps) {
       <div className="p-3 border-t border-slate-800 bg-slate-950/50 text-[11px] text-slate-400 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-medium text-slate-300">Mock Data Mode</span>
+          <span className="font-medium text-emerald-400">Live Agent</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">10 Scenarios</span>
+        <span className="text-[10px] text-slate-500 font-mono">Real Data</span>
       </div>
     </aside>
   );

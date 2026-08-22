@@ -19,7 +19,13 @@ export function TopHeader() {
           <span className="font-medium text-slate-500 hidden sm:inline">Account Scope:</span>
           <select
             value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedAccountId(val);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('pp_account_scope', val === 'all' ? '' : val);
+              }
+            }}
             className="bg-transparent font-semibold text-slate-800 text-xs focus:outline-none cursor-pointer"
           >
             <option value="all">All Accounts (Global Scope)</option>
