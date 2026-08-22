@@ -169,9 +169,10 @@ async function mockStreamResponse(
       toolSteps: [
         {
           id: 'step-scope-1',
-          tool_name: 'evaluate_domain_relevance',
+          toolName: 'search_documents',
+          label: 'Domain Relevance Check',
           status: 'completed',
-          duration_ms: 12,
+          durationMs: 12,
           description: 'Evaluated prompt domain relevance against ParcelPilot logistics knowledge base: OUT OF SCOPE',
         },
       ],
