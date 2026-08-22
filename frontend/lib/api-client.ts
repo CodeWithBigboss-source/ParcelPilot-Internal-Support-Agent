@@ -21,17 +21,35 @@ function jitter(base: number, spread: number) {
   return base + Math.random() * spread;
 }
 
+function getStoredConversations(): Conversation[] {
+  if (typeof window === 'undefined') return CONVERSATIONS;
+  try {
+    const stored = localStorage.getItem('parcelpilot_conversations');
+    if (stored) return JSON.parse(stored);
+  } catch { /* fallback to default mock */ }
+  return CONVERSATIONS;
+}
+
+export function saveConversationToStorage(conv: Conversation) {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = getStoredConversations();
+    const idx = list.findIndex((c) => c.id === conv.id);
+    if (idx !== -1) {
+      list[idx] = conv;
+    } else {
+      list.unshift(conv);
+    }
+    localStorage.setItem('parcelpilot_conversations', JSON.stringify(list));
+    // Trigger custom event so sidebar updates instantly
+    window.dispatchEvent(new Event('parcelpilot_storage_update'));
+  } catch { /* ignore */ }
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   if (USE_MOCK) {
     await delay(jitter(150, 50));
-    return CONVERSATIONS.map(({ id, title, preview, timestamp, status }) => ({
-      id,
-      title,
-      preview,
-      timestamp,
-      status,
-      messages: [],
-    }));
+    return getStoredConversations();
   }
   const res = await fetch(`${BASE_URL}/conversations`);
   return res.json();
@@ -40,7 +58,8 @@ export async function getConversations(): Promise<Conversation[]> {
 export async function getConversation(id: string): Promise<Conversation | null> {
   if (USE_MOCK) {
     await delay(jitter(100, 50));
-    return CONVERSATIONS.find((c) => c.id === id) ?? null;
+    const list = getStoredConversations();
+    return list.find((c) => c.id === id) ?? null;
   }
   const res = await fetch(`${BASE_URL}/conversations/${id}`);
   if (!res.ok) return null;
@@ -100,6 +119,30 @@ async function mockStreamResponse(
   const lower = userMessage.toLowerCase();
 
   let scenario: Message | null = null;
+  const isLogisticsRelated =
+    lower.includes('northstar') ||
+    lower.includes('lumenworks') ||
+    lower.includes('swiftship') ||
+    lower.includes('cancel') ||
+    lower.includes('credit') ||
+    lower.includes('sop') ||
+    lower.includes('policy') ||
+    lower.includes('order') ||
+    lower.includes('ticket') ||
+    lower.includes('ord-') ||
+    lower.includes('tkt-') ||
+    lower.includes('acct-') ||
+    lower.includes('fee') ||
+    lower.includes('pickup') ||
+    lower.includes('delay') ||
+    lower.includes('escalat') ||
+    lower.includes('security') ||
+    lower.includes('api key') ||
+    lower.includes('dispute') ||
+    lower.includes('agreement') ||
+    lower.includes('billing') ||
+    lower.includes('wire transfer');
+
   if (lower.includes('northstar') && lower.includes('cancel') && !lower.includes('histor')) {
     const { SCENARIO_1 } = await import('@/lib/mock-data/messages');
     scenario = SCENARIO_1[1];
@@ -115,6 +158,25 @@ async function mockStreamResponse(
   } else if (lower.includes('lumenworks') || lower.includes('credit') || lower.includes('ord-2002')) {
     const { SCENARIO_5 } = await import('@/lib/mock-data/messages');
     scenario = SCENARIO_5[1];
+  } else if (!isLogisticsRelated || lower.includes('who is') || lower.includes('what is') || lower.includes('weather')) {
+    scenario = {
+      id: `out-of-scope-${Date.now()}`,
+      role: 'assistant',
+      content:
+        'I am the ParcelPilot AI Internal Support & Operations Agent. I am specifically trained to assist with internal ParcelPilot logistics operations, customer account contracts, order status checks (e.g. ORD-1001), support tickets (e.g. TKT-505), and SOP policies.\n\nYour question does not appear to be related to ParcelPilot logistics operations. Please ask a question related to ParcelPilot orders, tickets, contracts, or support policies.',
+      timestamp: new Date().toISOString(),
+      confidence: 'low',
+      toolSteps: [
+        {
+          id: 'step-scope-1',
+          tool_name: 'evaluate_domain_relevance',
+          status: 'completed',
+          duration_ms: 12,
+          description: 'Evaluated prompt domain relevance against ParcelPilot logistics knowledge base: OUT OF SCOPE',
+        },
+      ],
+      sources: [],
+    };
   } else {
     const { SCENARIO_1 } = await import('@/lib/mock-data/messages');
     scenario = SCENARIO_1[1];

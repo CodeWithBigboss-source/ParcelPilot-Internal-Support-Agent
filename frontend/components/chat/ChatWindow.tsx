@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { Message, ToolStep, Source, PendingAction, ConfidenceLevel } from '@/lib/types';
-import { streamAssistantResponse, type StreamChunk } from '@/lib/api-client';
+import { streamAssistantResponse, saveConversationToStorage, type StreamChunk } from '@/lib/api-client';
 import { MessageList } from './MessageList';
 import { ChatComposer } from './ChatComposer';
 import { SuggestedPrompts } from './SuggestedPrompts';
@@ -32,6 +32,8 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
   async function handleSendMessage(userText: string) {
     if (isStreaming) return;
 
+    const currentId = conversationId === 'new' ? `conv-${Date.now()}` : conversationId;
+
     const userMessageId = `user-msg-${Date.now()}`;
     const userMsg: Message = {
       id: userMessageId,
@@ -59,7 +61,7 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
 
     try {
       await streamAssistantResponse(
-        conversationId,
+        currentId,
         userText,
         (chunk: StreamChunk) => {
           setMessages((prev) => {
@@ -105,6 +107,18 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
             } else if (chunk.type === 'done') {
               target.isStreaming = false;
               target.content = target.streamedContent || target.content;
+
+              // Save updated conversation to storage
+              const allMsgs = [...updated];
+              allMsgs[targetIdx] = target;
+              saveConversationToStorage({
+                id: currentId,
+                title: userText.slice(0, 32) + (userText.length > 32 ? '...' : ''),
+                preview: target.content.slice(0, 50) + '...',
+                timestamp: new Date().toISOString(),
+                status: target.escalationRecommended ? 'escalated' : 'open',
+                messages: allMsgs,
+              });
             } else if (chunk.type === 'error') {
               target.isStreaming = false;
               target.error = chunk.payload as string;

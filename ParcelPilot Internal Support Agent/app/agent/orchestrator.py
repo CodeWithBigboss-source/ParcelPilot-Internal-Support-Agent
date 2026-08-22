@@ -536,7 +536,29 @@ def _run_deterministic_engine(
             escalation_reason="Out-of-scope request with no covering policy documentation.",
         )
 
-    # Generic Fallback Response
+    # 7. Irrelevant / Out-of-Scope general knowledge queries
+    logistics_keywords = [
+        "NORTHSTAR", "LUMENWORKS", "SWIFTSHIP", "CANCEL", "CREDIT", "SOP", "POLICY",
+        "ORDER", "TICKET", "ORD-", "TKT-", "ACCT-", "FEE", "PICKUP", "DELAY",
+        "ESCALAT", "SECURITY", "API KEY", "DISPUTE", "AGREEMENT", "BILLING", "WIRE"
+    ]
+    if not any(k in msg_text for k in logistics_keywords) or any(phrase in msg_text for phrase in ["WHO IS", "WHAT IS THE WEATHER", "TELL ME A JOKE"]):
+        answer = (
+            "I am the ParcelPilot AI Internal Support & Operations Agent. I am specifically trained to assist "
+            "with internal ParcelPilot logistics operations, customer account contracts, order status checks (e.g. ORD-1001), "
+            "support tickets (e.g. TKT-505), and SOP policies.\n\n"
+            "Your query does not appear to be related to ParcelPilot logistics operations. Please ask a question related to ParcelPilot orders, tickets, contracts, or support policies."
+        )
+        return ChatResponse(
+            answer=answer,
+            sources=[],
+            confidence=ConfidenceLevel.LOW,
+            is_historical=False,
+            conflict_detected=False,
+            tool_trace=tool_trace,
+        )
+
+    # Generic Fallback Response for recognized logistics queries
     answer = (
         "I have processed your query using the ParcelPilot core engine. "
         "Source authority rules have been applied (Customer Agreement > Current Policy/SOP > Product Docs > Deprecated Policy > Historical Tickets)."

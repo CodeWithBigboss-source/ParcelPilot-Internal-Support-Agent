@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Conversation } from '@/lib/types';
+import { getConversations } from '@/lib/api-client';
 import { CONVERSATIONS } from '@/lib/mock-data/conversations';
 import {
   Plus,
@@ -20,8 +22,32 @@ interface SidebarProps {
   conversations?: Conversation[];
 }
 
-export function Sidebar({ conversations = CONVERSATIONS }: SidebarProps) {
+export function Sidebar({ conversations: initialConvs }: SidebarProps) {
   const pathname = usePathname();
+  const [items, setItems] = useState<Conversation[]>(initialConvs || CONVERSATIONS);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const data = await getConversations();
+        if (isMounted && data.length > 0) {
+          setItems(data);
+        }
+      } catch { /* ignore */ }
+    }
+    load();
+
+    const handleUpdate = () => {
+      load();
+    };
+
+    window.addEventListener('parcelpilot_storage_update', handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('parcelpilot_storage_update', handleUpdate);
+    };
+  }, []);
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-full border-r border-slate-800 shrink-0 select-none">
@@ -69,7 +95,7 @@ export function Sidebar({ conversations = CONVERSATIONS }: SidebarProps) {
           Recent Investigations
         </span>
 
-        {conversations.map((conv) => {
+        {items.map((conv) => {
           const isActive = pathname === `/chat/${conv.id}`;
           return (
             <Link
