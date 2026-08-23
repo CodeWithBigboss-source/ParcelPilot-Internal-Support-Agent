@@ -1,0 +1,22 @@
+[project]
+name = "parcelpilot-backend"
+version = "1.0.0"
+description = "ParcelPilot Internal Support Agent Backend API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]>=0.110.0",
+    "uvicorn[standard]>=0.22.0",
+    "pydantic>=2.0.0",
+    "groq>=0.4.0",
+    "chromadb>=0.4.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "pypdf>=3.10.0",
+    "sqlalchemy>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "pytest>=7.0.0",
+    "httpx>=0.24.0"
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
