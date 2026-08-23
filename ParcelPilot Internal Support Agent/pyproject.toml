@@ -1,0 +1,8 @@
+[project]
+name = "parcelpilot-backend"
+version = "0.1.0"
+description = "ParcelPilot Internal Support Agent Backend API"
+requires-python = ">=3.11"
+
+[tool.fastapi]
+entrypoint = "app.main:app"

@@ -108,9 +108,9 @@ export async function streamAssistantResponse(
         message: userMessage,
         history: [],
         user_context: userContext ?? {
-          role: 'support_agent',
+          role: 'senior_support',
           account_scope: null,
-          user_name: 'support_user',
+          user_name: 'Rahul Sharma',
         },
       }),
       signal,

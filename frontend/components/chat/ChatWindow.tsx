@@ -60,11 +60,23 @@ export function ChatWindow({ conversationId = 'new', initialMessages = [] }: Cha
     abortControllerRef.current = new AbortController();
 
     // Read persisted user context (set by RoleSwitcher + TopHeader account dropdown)
+    const rawRole = typeof window !== 'undefined' ? localStorage.getItem('pp_user_role') : null;
+    const rawAccount = typeof window !== 'undefined'
+      ? (localStorage.getItem('pp_account_scope') || localStorage.getItem('pp_user_account'))
+      : null;
+    const rawName = typeof window !== 'undefined' ? localStorage.getItem('pp_user_name') : null;
+
+    const role = (rawRole || 'senior_support') as 'support_agent' | 'senior_support' | 'operations_manager' | 'admin';
+    let account_scope = rawAccount || null;
+    if (role === 'support_agent' && !account_scope) {
+      account_scope = 'ACCT-001'; // Default account scope for support agent
+    }
+
     const userContext = {
-      role: (typeof window !== 'undefined' ? localStorage.getItem('pp_user_role') : null) ?? 'support_agent',
-      account_scope: (typeof window !== 'undefined' ? localStorage.getItem('pp_account_scope') : null) || null,
-      user_name: (typeof window !== 'undefined' ? localStorage.getItem('pp_user_name') : null) ?? 'support_user',
-    } as { role: 'support_agent' | 'senior_support' | 'operations_manager' | 'admin'; account_scope: string | null; user_name: string };
+      role,
+      account_scope,
+      user_name: rawName || 'Rahul Sharma',
+    };
 
     try {
       await streamAssistantResponse(

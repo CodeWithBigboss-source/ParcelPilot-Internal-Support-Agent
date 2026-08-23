@@ -263,8 +263,9 @@ def _run_groq_loop(
                                         SourceRef(type=SourceType.TICKET, title=f"Ticket {data['ticket_id']}")
                                     )
                                 elif "account_id" in data:
+                                    acc_name = data.get("name") or data.get("account_id") or "Account"
                                     structured_sources.append(
-                                        SourceRef(type=SourceType.ACCOUNT, title=f"Account {data['account_name']}")
+                                        SourceRef(type=SourceType.ACCOUNT, title=f"Account {acc_name}")
                                     )
                         tool_result_content = json.dumps(res)
 

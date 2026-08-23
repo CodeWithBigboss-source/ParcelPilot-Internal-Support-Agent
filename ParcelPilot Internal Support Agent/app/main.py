@@ -20,10 +20,23 @@ from app.agent.tools import cancel_action, execute_action
 from app.core.access_control import AccessDeniedError, UserContext
 from app.core.config import CORS_ORIGINS, SNAPSHOT_TIME_ISO
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure dataset ingestion is completed on startup
+    try:
+        from app.ingestion.ingest import run_full_ingestion
+        run_full_ingestion()
+    except Exception as e:
+        print(f"Startup ingestion info: {e}")
+    yield
+
 app = FastAPI(
     title="ParcelPilot Internal Support Agent API",
     description="Backend AI core engine powering ParcelPilot's internal support and operations chatbot.",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware configuration
@@ -55,6 +68,16 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     try:
         return run_agent(request)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid request or user context: {str(e)}",
+        )
+    except AccessDeniedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
